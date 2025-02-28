@@ -135,7 +135,7 @@ st.write("A smart recipe assistant! Click **Start** to begin.")
 # Start button
 if st.button("Start Chat"):
     st.session_state.started = True
-    st.session_state.bot_message = "Hello! I'm RecipeBot 🤖. What recipe are you looking for today?"
+    st.session_state.bot_message = "Hello! I'm RecipeBot 🤖. What recipe are you looking for today ?"
 
 # Initialize session state
 if "started" not in st.session_state:
