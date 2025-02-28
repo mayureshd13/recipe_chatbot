@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import random
 
+
+st.set_page_config(page_title="RecipeBot", page_icon="logo.png")
+
 # Load dataset
 df = pd.read_csv("recipes.csv")
 
