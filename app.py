@@ -1,18 +1,39 @@
 import streamlit as st
 import pandas as pd
 import random
-
+from deep_translator import GoogleTranslator
 
 st.set_page_config(page_title="RecipeBot", page_icon="logo.png")
 
 # Load dataset
 df = pd.read_csv("recipes.csv")
 
+# Available languages for translation
+languages = {
+    "English": "en",
+    "Hindi": "hi",
+    "Marathi": "mr",
+    "Gujarati": "gu",
+    "Bengali": "bn",
+    "Tamil": "ta",
+    "Telugu": "te",
+    "Punjabi": "pa"
+}
+
 # Initialize session state for favorites
 if "favorites" not in st.session_state:
     st.session_state.favorites = []
 
-# Function to format recipe details
+# Language selection dropdown
+selected_lang = st.selectbox("🌎 Select Language:", list(languages.keys()), index=0)
+
+# Function to translate text
+def translate_text(text, target_lang):
+    if target_lang != "en":  # No need to translate if English is selected
+        return GoogleTranslator(source='auto', target=target_lang).translate(text)
+    return text
+
+# Function to format and display recipe details
 def format_recipe(name):
     recipe = df[df["TranslatedRecipeName"].str.contains(name, case=False, na=False)]
     
@@ -20,18 +41,19 @@ def format_recipe(name):
         data = recipe.iloc[0]
         ingredients = data['TranslatedIngredients'].split(',')
         instructions = data['TranslatedInstructions'].split('. ')
+        target_lang = languages[selected_lang]
         
         # Display structured recipe format
-        st.markdown(f"## 🍽️ {data['TranslatedRecipeName']}")
-        st.image(data['image-url'], width=300)  # Show recipe image
+        st.markdown(f"## 🍽️ {translate_text(data['TranslatedRecipeName'], target_lang)}")
+        st.image(data['image-url'], width=300)
 
         # Ingredients section
         st.markdown("### 🥕 Ingredients:")
-        st.markdown("\n".join([f"- {ingredient.strip()}" for ingredient in ingredients]))
+        st.markdown("\n".join([f"- {translate_text(ingredient.strip(), target_lang)}" for ingredient in ingredients]))
 
         # Instructions section (Better formatted)
         st.markdown("### 📖 Instructions:")
-        st.markdown("\n".join([f"✔️ {step.strip()}" for step in instructions]))
+        st.markdown("\n".join([f"✔️ {translate_text(step.strip(), target_lang)}" for step in instructions]))
 
         # More Info as a Button
         st.markdown(
@@ -44,7 +66,6 @@ def format_recipe(name):
             if data['TranslatedRecipeName'] not in st.session_state.favorites:
                 st.session_state.favorites.append(data['TranslatedRecipeName'])
                 st.success(f"Added {data['TranslatedRecipeName']} to Favorites!")
-
     else:
         st.warning("❌ Recipe not found. Try another name or select from suggestions.")
 
@@ -83,7 +104,7 @@ if st.session_state.started:
     suggestions = get_suggestions(user_input)
     if suggestions:
         selected_recipe = st.selectbox("🔽 Suggested Recipes:", suggestions, key="suggestions")
-        user_input = selected_recipe  # Auto-fill the selection
+        user_input = selected_recipe
 
     # "Surprise Me!" random recipe button
     if st.button("🎲 Surprise Me!"):
@@ -100,6 +121,6 @@ if st.session_state.favorites:
         st.write(f"⭐ {fav_recipe}")
         if st.button(f"❌ Remove {fav_recipe}", key=f"remove_{fav_recipe}"):
             st.session_state.favorites.remove(fav_recipe)
-            st.rerun()  # Refresh the app after removing
+            st.rerun()
 else:
     st.write("You have no favorite recipes yet.")
