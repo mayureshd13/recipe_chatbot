@@ -82,16 +82,35 @@ def format_recipe(name):
                 st.session_state.favorites.append(data['TranslatedRecipeName'])
                 st.success(f"Added {data['TranslatedRecipeName']} to Favorites!")
 
-                # Share Recipe Feature (Copy & WhatsApp)
-        recipe_text = f"{data['TranslatedRecipeName']}\n\nIngredients:\n" + "\n".join(ingredients) + "\n\nInstructions:\n" + "\n".join(instructions)
-        encoded_text = urllib.parse.quote(recipe_text.replace("\n", "%0A"))
+        # Share Recipe Feature (Copy & WhatsApp)
+        # Translate the recipe based on the selected language
+        target_lang = languages[selected_lang]
+        translated_recipe_name = translate_text(data['TranslatedRecipeName'], target_lang)
+        translated_ingredients = [translate_text(ingredient.strip(), target_lang) for ingredient in ingredients]
+        translated_instructions = [translate_text(step.strip(), target_lang) for step in instructions]
 
+        # Combine translated recipe parts into a single string
+        translated_recipe_text = f"{translated_recipe_name}\n\nIngredients:\n" + "\n".join(translated_ingredients) + "\n\nInstructions:\n" + "\n".join(translated_instructions)
+
+        # Encode the translated recipe text
+        encoded_translated_text = urllib.parse.quote(translated_recipe_text)
+
+        # Generate the WhatsApp link with the translated text
+        whatsapp_url = f"https://wa.me/?text={encoded_translated_text}"
+
+        # Display the recipe text for copying
         col1, col2 = st.columns(2)
         with col1:
-            st.text_area("📋 Copy and paste this recipe:", recipe_text, height=150)
+            st.text_area("📋 Copy and paste this recipe:", translated_recipe_text, height=150)
 
+        # WhatsApp share button with the translated text
         with col2:
-            st.markdown(f'<a href="https://wa.me/?text={encoded_text}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">📲 Share on WhatsApp</button></a>', unsafe_allow_html=True)
+            st.markdown(
+                f'<a href="{whatsapp_url}" target="_blank">'
+                f'<button style="background-color:#25D366; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">📲 Share on WhatsApp</button>'
+                f'</a>',
+                unsafe_allow_html=True
+    )
 
         st.markdown('</div>', unsafe_allow_html=True)  # Close center div
 
