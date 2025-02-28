@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import random
+import urllib.parse
 from deep_translator import GoogleTranslator
 
 st.set_page_config(page_title="RecipeBot", page_icon="logo.png")
@@ -33,10 +34,18 @@ def translate_text(text, target_lang):
         return GoogleTranslator(source='auto', target=target_lang).translate(text)
     return text
 
-# Function to format and display recipe details
 def format_recipe(name):
-    recipe = df[df["TranslatedRecipeName"].str.contains(name, case=False, na=False)]
-    
+    # Normalize input and dataset text for better matching
+    name = name.strip().lower()
+    df["TranslatedRecipeName"] = df["TranslatedRecipeName"].astype(str).str.strip().str.lower()
+
+    # First, try exact match
+    recipe = df[df["TranslatedRecipeName"] == name]
+
+    # If no exact match, try partial match
+    if recipe.empty:
+        recipe = df[df["TranslatedRecipeName"].str.contains(name, case=False, na=False)]
+
     if not recipe.empty:
         data = recipe.iloc[0]
         ingredients = data['TranslatedIngredients'].split(',')
@@ -45,7 +54,13 @@ def format_recipe(name):
         
         # Display structured recipe format
         st.markdown(f"## 🍽️ {translate_text(data['TranslatedRecipeName'], target_lang)}")
-        st.image(data['image-url'], width=300)
+        
+        # Recipe Image with Frame (Border)
+        st.markdown(
+            f'<div style="border: 3px solid #4CAF50; padding: 5px; display: inline-block;">'
+            f'<img src="{data["image-url"]}" width="300"></div>',
+            unsafe_allow_html=True,
+        )
 
         # Ingredients section
         st.markdown("### 🥕 Ingredients:")
@@ -66,6 +81,20 @@ def format_recipe(name):
             if data['TranslatedRecipeName'] not in st.session_state.favorites:
                 st.session_state.favorites.append(data['TranslatedRecipeName'])
                 st.success(f"Added {data['TranslatedRecipeName']} to Favorites!")
+
+                # Share Recipe Feature (Copy & WhatsApp)
+        recipe_text = f"{data['TranslatedRecipeName']}\n\nIngredients:\n" + "\n".join(ingredients) + "\n\nInstructions:\n" + "\n".join(instructions)
+        encoded_text = urllib.parse.quote(recipe_text.replace("\n", "%0A"))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.text_area("📋 Copy and paste this recipe:", recipe_text, height=150)
+
+        with col2:
+            st.markdown(f'<a href="https://wa.me/?text={encoded_text}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">📲 Share on WhatsApp</button></a>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)  # Close center div
+
     else:
         st.warning("❌ Recipe not found. Try another name or select from suggestions.")
 
@@ -97,22 +126,28 @@ if "started" not in st.session_state:
 if st.session_state.started:
     st.markdown(f"🗨️ **Bot:** {st.session_state.bot_message}")
 
-    # Recipe search input with dynamic suggestions
-    user_input = st.text_input("🔍 Start typing a recipe name...", key="recipe_input")
+    # Press 'Enter' to search using Streamlit Form
+    with st.form("search_form"):
+        user_input = st.text_input("🔍 Start typing a recipe name...", key="recipe_input")
+        submitted = st.form_submit_button("Search")
 
     # Show recipe name suggestions
     suggestions = get_suggestions(user_input)
+    selected_recipe = None
     if suggestions:
         selected_recipe = st.selectbox("🔽 Suggested Recipes:", suggestions, key="suggestions")
-        user_input = selected_recipe
-
+    
     # "Surprise Me!" random recipe button
     if st.button("🎲 Surprise Me!"):
         suggest_random_recipe()
 
-    # Display recipe details
-    if user_input:
+    # Display recipe details when:
+    # 1️⃣ User presses Enter (submitted via form)
+    # 2️⃣ User selects a recipe from suggestions
+    if submitted and user_input:
         format_recipe(user_input)
+    elif selected_recipe:  # Automatically display selected recipe
+        format_recipe(selected_recipe)
 
 # Display Favorite Recipes Section
 st.markdown("## ❤️ My Favorites")
