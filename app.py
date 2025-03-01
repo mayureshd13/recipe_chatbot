@@ -3,6 +3,8 @@ import pandas as pd
 import random
 import urllib.parse
 from deep_translator import GoogleTranslator
+from rapidfuzz import process, fuzz
+
 
 st.set_page_config(page_title="RecipeBot", page_icon="logo.png")
 
@@ -122,11 +124,27 @@ def suggest_random_recipe():
     recipe = df.sample(1).iloc[0]
     format_recipe(recipe['TranslatedRecipeName'])
 
-# Get recipe suggestions based on user input
-def get_suggestions(query):
-    if query:
-        return df[df["TranslatedRecipeName"].str.contains(query, case=False, na=False)]["TranslatedRecipeName"].tolist()
-    return []
+# Function to get recipe suggestions with better search handling
+def get_suggestions(query, df):
+    if not query:
+        return []
+    
+    query = query.strip().lower().replace(" ", "")  # Normalize user input (remove spaces)
+    
+    # Normalize dataset by removing spaces and converting to lowercase
+    df["NormalizedRecipeName"] = df["TranslatedRecipeName"].str.lower().str.replace(" ", "", regex=False)
+    
+    # Find exact or partial matches
+    exact_matches = df[df["NormalizedRecipeName"].str.contains(query, case=False, na=False)]
+    
+    if not exact_matches.empty:
+        return exact_matches["TranslatedRecipeName"].tolist()
+    
+    # If no exact match, use fuzzy matching
+    possible_matches = process.extract(query, df["TranslatedRecipeName"].tolist(), scorer=fuzz.partial_ratio, limit=5)
+    
+    # Return results where similarity score is above a threshold (e.g., 70)
+    return [match[0] for match in possible_matches if match[1] > 70]
 
 # Streamlit UI
 st.title("🍜 RecipeBot")
@@ -151,7 +169,7 @@ if st.session_state.started:
         submitted = st.form_submit_button("Search")
 
     # Show recipe name suggestions
-    suggestions = get_suggestions(user_input)
+    suggestions = get_suggestions(user_input,df)
     selected_recipe = None
     if suggestions:
         selected_recipe = st.selectbox("🔽 Suggested Recipes:", suggestions, key="suggestions")
