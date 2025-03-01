@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import random
 import urllib.parse
 from deep_translator import GoogleTranslator
 from rapidfuzz import process, fuzz
@@ -147,7 +146,10 @@ def get_suggestions(query, df):
     return [match[0] for match in possible_matches if match[1] > 70]
 
 # Streamlit UI
-st.title("🍜 RecipeBot")
+st.markdown("""
+    <h1 style='display: inline;'>🍜 RecipeBot</h1>
+    <span style='font-size: 14px; font-style: italic; color: gray;'>By Mayuresh D</span>
+""", unsafe_allow_html=True)
 st.write("A smart recipe assistant! Click **Start** to begin.")
 
 # Start button
